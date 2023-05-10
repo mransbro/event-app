@@ -28,9 +28,30 @@ resource "aws_s3_bucket_versioning" "event-app" {
   }
 }
 
+data "aws_iam_policy_document" "queue" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = ["arn:aws:sqs:*:*:s3-event-notification-queue"]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_s3_bucket.event_app.arn]
+    }
+  }
+}
+
 # Create the SQS topic to receive notifications from the S3 bucket
 resource "aws_sqs_queue" "event_app" {
   name = "event_app"
+  policy = data.aws_iam_policy_document.queue.json
 }
 
 # Set up the bucket notification to send messages to the SQS topic
